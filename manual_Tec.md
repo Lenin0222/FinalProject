@@ -206,3 +206,4 @@ Tiempo de espera (en milisegundos) para considerar que ya no hay movimiento. En 
 | `intervaloBuzzer`              | Controlar con qué frecuencia suena el buzzer      |
 | `tiempoUltimoMovimiento`       | Saber cuándo se detectó movimiento por última vez |
 | `tiempoEsperaSinMovimiento`    | Tiempo antes de mostrar "Sin movimiento"          |
+
