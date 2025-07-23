@@ -22,15 +22,15 @@ enum EstadoAlarma {
 };
 EstadoAlarma estadoActualAlarma = ALARMA_DESACTIVADA; // La alarma inicia desactivada
 
-bool movimientoDetectadoActual = false;     // Estado actual del sensor PIR
-bool movimientoDetectadoAnterior = false;   // Para saber si en el ciclo anterior hubo movimiento
-bool lcdNecesitaActualizar = true;          // Bandera para controlar cuándo actualizar el LCD completamente
+bool movimientoDetectadoActual = false;    // Estado actual del sensor PIR
+bool movimientoDetectadoAnterior = false;  // Para saber si en el ciclo anterior hubo movimiento
+bool lcdNecesitaActualizar = true;         // Bandera para controlar cuándo actualizar el LCD completamente
 
 // --- Variables para el Debounce del Botón ---
-int valorBotonActual;                     // Estado actual del botón (LOW si está presionado con INPUT_PULLUP)
-int valorBotonAnterior = HIGH;            // Estado anterior del botón
+int valorBotonActual;              // Estado actual del botón (LOW si está presionado con INPUT_PULLUP)
+int valorBotonAnterior = HIGH;     // Estado anterior del botón
 unsigned long tiempoUltimoCambioBoton = 0; // Tiempo en el que el botón cambió de estado
-const unsigned long debounceDelay = 50;   // Milisegundos de retardo para debounce
+const unsigned long debounceDelay = 50;  // Milisegundos de retardo para debounce
 
 // --- Variables para el Buzzer Intermitente y Conteo ---
 unsigned long tiempoUltimaAlternacionBuzzer = 0; // Para el ritmo ON/OFF
@@ -51,7 +51,7 @@ unsigned long tiempoInicioAlarmaActiva = 0; // Guarda el tiempo en que la alarma
 const unsigned long duracionAlarmaAutomatica = 5 * 60 * 1000; // 5 minutos en milisegundos
 
 // --- Variables para el retardo de armado ---
-unsigned long tiempoInicioArmado = 0;           // Guarda el tiempo en que se inició el proceso de armado
+unsigned long tiempoInicioArmado = 0;          // Guarda el tiempo en que se inició el proceso de armado
 const unsigned long duracionRetardoArmado = 5000; // 5 segundos para el retardo de armado
 
 // --- Variables para la verificación de conexión del PIR al armar ---
@@ -84,13 +84,13 @@ void setup() {
 
   // Configuración de pines
   // IMPORTANTE: Asegúrate de tener una resistencia de 10K Ohm del pinPIR a GND.
-  pinMode(pinPIR, INPUT);           // El pin del PIR es una entrada
-  pinMode(pinBuzzer, OUTPUT);       // El pin del buzzer es una salida
-  pinMode(pinBoton, INPUT_PULLUP);  // Si usas resistencia pull-up INTERNA de Arduino (botón a GND)
+  pinMode(pinPIR, INPUT);          // El pin del PIR es una entrada
+  pinMode(pinBuzzer, OUTPUT);      // El pin del buzzer es una salida
+  pinMode(pinBoton, INPUT_PULLUP); // Si usas resistencia pull-up INTERNA de Arduino (botón a GND)
 
   // Inicialización de la pantalla LCD
-  lcd.init();         // Inicializa el LCD
-  lcd.backlight();    // Enciende la luz de fondo del LCD
+  lcd.init();        // Inicializa el LCD
+  lcd.backlight();   // Enciende la luz de fondo del LCD
 
   // --- Secuencia de Inicio y Calibración del PIR ---
   lcd.clear();
@@ -160,10 +160,10 @@ void loop() {
           // Con la resistencia pulldown, si verificarConexionPIR() devuelve false,
           // es muy probable que el PIR no esté conectado o esté defectuoso.
           if (verificarConexionPIR()) {
-            estadoActualAlarma = ALARMA_ARMANDO;     // Si el PIR responde, armar normalmente
-            tiempoInicioArmado = millis();           // Guarda el tiempo de inicio del armado
+            estadoActualAlarma = ALARMA_ARMANDO;      // Si el PIR responde, armar normalmente
+            tiempoInicioArmado = millis();            // Guarda el tiempo de inicio del armado
             Serial.println("Alarma: Iniciando armado (5s de retardo)");
-            lcdNecesitaActualizar = true;            // Forzar actualización
+            lcdNecesitaActualizar = true;             // Forzar actualización
             tone(pinBuzzer, 800, 100); // Tono de "Adios"
           } else {
             estadoActualAlarma = ERROR_PIR_ARMADO; // Si no responde, ir a estado de error
@@ -175,10 +175,10 @@ void loop() {
           // Si está activa o disparada, la desactiva
           estadoActualAlarma = ALARMA_DESACTIVADA; // Desactivar desde Activa o Disparada
           Serial.println("Alarma: DESACTIVADA manualmente.");
-          lcdNecesitaActualizar = true;            // Forzar actualización
+          lcdNecesitaActualizar = true;             // Forzar actualización
           tone(pinBuzzer, 1200, 100); // Tono de "Bienvenido"
         }
-        
+
         // Asegurar que el buzzer esté apagado después del tono corto
         noTone(pinBuzzer);
         digitalWrite(pinBuzzer, LOW);
@@ -236,7 +236,7 @@ void loop() {
       }
 
       // Con la resistencia pulldown, un LOW aquí es confiable para "Sin movimiento".
-      movimientoDetectadoActual = (digitalRead(pinPIR) == HIGH); 
+      movimientoDetectadoActual = (digitalRead(pinPIR) == HIGH);
 
       if (movimientoDetectadoActual) {
         estadoActualAlarma = ALARMA_DISPARADA;
@@ -312,7 +312,7 @@ void loop() {
         lcd.print("DETECTADO AL ARMAR");
         lcdNecesitaActualizar = false;
       }
-      
+
       // Buzzer intermitente para el error (no bloqueante)
       if ((millis() - tiempoUltimaAlternacionBuzzer) >= 500) { // Tono de error cada 0.5s
         if (digitalRead(pinBuzzer) == LOW) { // Si el buzzer está apagado, enciéndelo

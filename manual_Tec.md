@@ -79,7 +79,7 @@ Permite utilizar comandos como:
 - *lcd.clear()* — borra el contenido
 - *lcd.backlight()* — enciende la luz de fondo
 
-## Variables y objetos utilizados
+## Variables, objetos utilizados y Máquinas de estado
 
 Los números 2, 8, y 4 en estas líneas:
 
@@ -140,13 +140,30 @@ Son los parámetros de configuración:
 
 *"Voy a usar una pantalla LCD con interfaz I2C que tiene 16 columnas y 2 filas. Su dirección I2C es 0x27. Llamaré a esta pantalla lcd para controlarla desde el código."*
 
+#### Arreglo de estados de la alarma
+
+    enum EstadoAlarma {
+      ALARMA_DESACTIVADA, //0
+      ALARMA_ARMANDO, // 1
+      ALARMA_ACTIVADA, // 2
+      ALARMA_DISPARADA // 3
+    };
+    EstadoAlarma estadoActualAlarma = ALARMA_DESACTIVADA; // estado actual de la alarma
+
+| Estado               | Descripción                                              |
+| -------------------- | -------------------------------------------------------- |
+| `ALARMA_DESACTIVADA` | Sistema apagado. No reacciona ante movimiento.           |
+| `ALARMA_ARMANDO`     | Cuenta regresiva antes de activarse (5 segundos).        |
+| `ALARMA_ACTIVADA`    | Alarma armada, esperando movimiento.                     |
+| `ALARMA_DISPARADA`   | Movimiento detectado. El buzzer suena intermitentemente. |
+
+
 #### Variables de control de la alarma
 
-    bool alarmaActiva = true;
+    bool movimientoDetectadoActual = false;
+Indica si la alarma ha detectado movimiento. Por defecto debe estar inicializada en falso.
 
-Indica si la alarma está activada o no y por defecto estará activada. Cada vez que se pulsa el boton , se activa o desactiva la alarma.
-
-    bool movimientoDetectado = false;
+    bool movimientoDetectadoAnterior = false;
 
 Indica si ha habido movimiento detectado o no y por defecto no habrá movimiento detectado. Esta variable ha de actualizarse constantemente en la función loop().
 
@@ -154,9 +171,9 @@ Indica si ha habido movimiento detectado o no y por defecto no habrá movimiento
 
 Se usa para evitar actualizar la pantalla LCD innecesariamente, de tal manera que en la pantalla se actualiza el mensaje cuando algo cambia (como desactivar la alarma o terminar el movimiento).
 
-#### Variables del botón
+#### Variables para *Debounce* del botón
 
-    int valorBotonActual = HIGH;
+    int valorBotonActual;
 
 Guarda el estado actual del botón (presionado o no).
 
@@ -164,7 +181,7 @@ Guarda el estado actual del botón (presionado o no).
 
 Guarda el estado anterior del botón, de tal manera que esta variable nos permitira saber si el boton fue presionado o no al compararse con el valor de la variable valorBotonActual.
 
-    unsigned long tiempoUltimoCambio = 0;
+    unsigned long tiempoUltimoCambioBoton = 0;
 
 Guarda el momento en que cambió por última vez el estado del botón. La variable ha de ser usada para hacer el "debounce" (evitar falsos positivos por rebote mecánico del botón).
 
@@ -176,33 +193,179 @@ Tiempo mínimo (en milisegundos) para aceptar un cambio de estado del botón com
 
     unsigned long tiempoUltimaActivacionBuzzer = 0;
 
-Guarda cuándo fue la última vez que se activó o desactivó el buzzer, se usa para que el buzzer suene de forma intermitente (ON-OFF-ON...).
+Guarda cuándo fue la última vez que se activó o desactivó el buzzer, se usa para que el buzzer suene de forma intermitente (ON-OFF-ON...). *¿Cuando se dio el último buzzer?*
 
-    const long intervaloBuzzer = 250;
+    const long duracionPulsoBuzzer = 250
 
 Intervalo en milisegundos entre cada cambio de estado del buzzer (cada 250 ms), lo que produce un efecto de parpadeo sonoro cuando hay movimiento.
 
-#### Variables de detección sin movimiento
+    int conteoPulsosBuzzer = 0; 
 
-    unsigned long tiempoUltimoMovimiento = 0;
+Variable de dedicada a contar cuántas veces se ha activado el buzer;
+
+    const int maxPulsosBuzzer = 10;
+
+"*Parametro*" dedicado a ha establecer el número máximo que se va a apagar y prender el buzer del sistema de alarma
+
+    bool buzzerCompletadoCiclo = false;
+
+Booleano que indica si se ha completado el ciclo de sonido del buzzer o no.
+
+#### Variables del sensor de movimiento
+
+    unsigned long tiempoUltimoMovimientoReal = 0;
 
 Guarda el tiempo en que se detectó el último movimiento, ha de ser utilizado para saber si ha pasado un tiempo determinado sin movimiento.
 
     const unsigned long tiempoEsperaSinMovimiento = 5000;
 
-Tiempo de espera (en milisegundos) para considerar que ya no hay movimiento. En este caso, después de 5 segundos sin detección, el LCD cambia el mensaje a “Sin movimiento”.
+Tiempo de espera (en milisegundos) para considerar que ya no hay movimiento. En este caso, después de 5 segundos el lcd mostrará el mensaje "Sin movimiento" y el buzzer se apagará.
+
+#### Variables de configuración y armado
+
+    const unsigned long tiempoCalibracionPIR = 30000; // 30 segundos (30000 milisegundos)
+
+Variable que guarda el tiempo de espera (en milisegundos) para que el sistema cargue y se calibre
+
+    unsigned long tiempoInicioAlarmaActiva = 0;
+
+Guarda el tiempo en que la alarma pasó a estado ALARMA_ACTIVADA (después del armado)
+
+const unsigned long duracionAlarmaAutomatica = 5 * 60 * 1000; // 5 minutos en milisegundos
+
+Guarda el tiempo en el que la alarma estará activa en milisegundos
+
+unsigned long tiempoInicioArmado = 0; 
+
+Guarda el tiempo en que se inició el proceso de armado
+
+const unsigned long duracionRetardoArmado = 5000; // 5 segundos para el retardo de armado
+
+Guarda el tiempo de retardo para el armado de la alarma
 
 ##### **Tabla de resumen de variables y constantes**
 
-| Variable                       | ¿Para qué sirve?                                  |
-| ------------------------------ | ------------------------------------------------- |
-| `alarmaActiva`                 | Saber si la alarma está encendida o no            |
-| `movimientoDetectado`          | Saber si el sensor PIR detectó algo               |
-| `lcdNecesitaActualizar`        | Controlar si se debe refrescar la pantalla        |
-| `valorBotonActual/Anterior`    | Detectar cambios en el botón                      |
-| `tiempoUltimoCambio`           | Saber cuándo fue el último cambio del botón       |
-| `debounceDelay`                | Filtro para ignorar rebotes del botón             |
-| `tiempoUltimaActivacionBuzzer` | Saber cuándo se cambió el estado del buzzer       |
-| `intervaloBuzzer`              | Controlar con qué frecuencia suena el buzzer      |
-| `tiempoUltimoMovimiento`       | Saber cuándo se detectó movimiento por última vez |
-| `tiempoEsperaSinMovimiento`    | Tiempo antes de mostrar "Sin movimiento"          |
+| Variable                          | ¿Para qué sirve?                               |
+| --------------------------------- | ---------------------------------------------- |
+| `estadoActualAlarma`              | Saber en qué estado está la alarma             |
+| `pinPIR`, `pinBuzzer`, `pinBoton` | Manejo físico de sensores y actuadores         |
+| `movimientoDetectadoActual`       | Detección de movimiento actual                 |
+| `movimientoDetectadoAnterior`     | Detección del ciclo anterior                   |
+| `lcdNecesitaActualizar`           | Evita refrescos innecesarios del LCD           |
+| `valorBotonActual/Anterior`       | Control del estado del botón                   |
+| `tiempoUltimoCambioBoton`         | Control del rebote del botón                   |
+| `debounceDelay`                   | Tiempo mínimo entre lecturas válidas del botón |
+| `tiempoUltimaAlternacionBuzzer`   | Control intermitente del buzzer                |
+| `duracionPulsoBuzzer`             | Frecuencia de parpadeo del buzzer              |
+| `conteoPulsosBuzzer`              | Número de pitidos realizados                   |
+| `buzzerCompletadoCiclo`           | Indica si terminó el ciclo de 5 pitidos        |
+| `tiempoUltimoMovimientoReal`      | Última detección real de movimiento            |
+| `tiempoEsperaSinMovimiento`       | Tiempo sin movimiento para actualizar pantalla |
+| `tiempoCalibracionPIR`            | Tiempo inicial de calibración del PIR          |
+| `tiempoInicioAlarmaActiva`        | Inicio de la fase activa                       |
+| `duracionAlarmaAutomatica`        | Tiempo antes de apagado automático             |
+| `tiempoInicioArmado`              | Momento donde inicia el retardo de armado      |
+| `duracionRetardoArmado`           | Retardo entre activación y estado activo       |
+
+## Bloques e intrucciones del código del programa
+
+### Void setup(){}
+
+Este es bloque principal del programa, el cual se ha de ejecutar una sola vez al inciar todo el sistema. Sus funciones principales son:
+
+- Inicializar comunicación serial (debug por consola).
+- Configurar los pines de entrada y salida.
+- Inicializar y configurar la pantalla LCD.
+- Realizar la secuencia de calibración del sensor PIR.
+- Mostrar mensajes de estado en el LCD.
+- Asegurar que el sistema comience en estado seguro (alarma desactivada y buzzer apagado).
+
+#### Descripción de las funciones del bloque setup()
+
+    void setup() {
+      Serial.begin(9600); 
+
+Inicia la comunicación serial entre el computador y el Arduino para depuración
+
+**-- Configuración de pines --:**
+
+      pinMode(pinPIR, INPUT);
+      pinMode(pinBuzzer, OUTPUT);
+      pinMode(pinBoton, INPUT_PULLUP);
+
+- El pin del PIR (sensor de movimiento) es una entrada
+- El pin del buzzer (alarma) es una salida
+- Si usas resistencia pull-up INTERNA de Arduino (botón a GND), el boton del sistema es una tambien entrada, aunque algo diferente
+
+**-- Inicialización de la pantalla LCD --:**
+
+      lcd.init();      
+      lcd.backlight();
+
+Inicializa el LCD y enciende la luz de fondo del LCD (enciende la pantalla del lcd).
+
+**--- Secuencia de Inicio y Calibración del PIR ---:**
+
+
+Las intrucciones seguidas de *lcd.* manejan lo que puede mostrar en la pantalla del lcd, puedes pensar en estas como las instrucciones que se le dan a la terminal de una workspace en visual code. En este caso, para mostrar el mensaje de inicio del sistema se ha procedido de la siguiente manera
+
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Sistema de Alarma");
+      lcd.setCursor(0, 1);
+      lcd.print("Iniciando...");
+      delay(2000);
+
+Donde:
+
+-*.clear*: Borra todo el contenido que puede haber estado en la pantalla LCD.
+-*.setCursor(0, 1)*: Posiciona el cursor en la posición en la poscición (0,0), como en la notación del objeto LCD, (0,1) se refiere al número de la fila y la columna del LCD; podemos pensar en él como una especie de *'\r'*.
+-*.print("---")*: Muestra un mensaje en el lcd.
+-*.delay(2000)*: Espera 2 segundos para mostrar el mensaje de inicio.
+
+Ahora se puede entender: 
+
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Calibrando PIR...");
+
+**-- Bucle para la cuenta regresiva en el LCD --:**
+
+    for (int i = tiempoCalibracionPIR / 1000; i >= 0; i--) {
+      lcd.setCursor(0, 1); // Posicionar cursor en la segunda línea 
+      lcd.print("Espere ");
+      if (i < 10) lcd.print(" ");
+      lcd.print(i);
+      lcd.print("s ");
+      Serial.print("Tiempo restante: ");
+      Serial.print(i);
+      Serial.println("s");
+      delay(1000); // Espera 1 segundo
+    }
+    Serial.println("PIR Calibrado. Sistema LISTO.");
+
+En el argumento del *for* se transforma el tiempo de calibración asignado en la variable a segundos y se hace que decienda este valor hasta que sea menor o igual a 0. En cada interación del bucle se muestra el tiempo restante en la monitorización del sistema.
+
+**-- Asegurarse de que el buzzer esté APAGADO al final de la inicialización --:**
+
+      digitalWrite(pinBuzzer, LOW);
+
+Al pin donde está conectado el Buzzer, no se le asigna voltaje para evitar que se active
+
+      buzzerCompletadoCiclo = false;
+      conteoPulsosBuzzer = 0;
+      estadoActualAlarma = ALARMA_DESACTIVADA;
+
+En dado caso de que las variables no se hayan incializado con sus valores por defecto (configuarados para que la alarma no suene), nos aseguramos de que sigan teniendo esos valores
+
+      lcdNecesitaActualizar = true; 
+
+Forzar actualización inicial del LCD
+
+      tiempoUltimoMovimientoReal = millis();
+
+millis() es una función estándar de Arduino que devuelve el número de milisegundos transcurridos desde que la placa comenzó a ejecutarse (desde que se encendió o se reinició). Empezar medición del tiempo para determinar cuando apagar el sensor.
+
+      movimientoDetectadoAnterior = false; // aun no debe activarse la alarma
+      tiempoInicioAlarmaActiva = 0; // Asegurarse de que esté en 0 al inicio
+    }
