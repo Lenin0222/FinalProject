@@ -79,7 +79,7 @@ Permite utilizar comandos como:
 - *lcd.clear()* — borra el contenido
 - *lcd.backlight()* — enciende la luz de fondo
 
-## Variables, objetos utilizados y Máquinas de estado
+## Variables y objetos utilizados
 
 Los números 2, 8, y 4 en estas líneas:
 
@@ -129,6 +129,12 @@ Siempre y cuando no elijas:
 Crea un objeto llamado lcd que representa una pantalla LCD con interfaz I2C, este será el nombre del objeto que usarás para controlar la pantalla (como lcd.print(...), lcd.setCursor(...), etc.).
 
     (0x27, 16, 2)
+
+Tambien se cuenta con un objeto virtual de repuesto en caso de que no funcione el anterior:
+
+    LiquidCrystal_I2C lcd(0x3F, 16, 2);
+
+Sientete libre de utilizar *.x3F* si el *.x27* no funciona.
 
 Son los parámetros de configuración:
 
@@ -205,11 +211,12 @@ Variable de dedicada a contar cuántas veces se ha activado el buzer;
 
     const int maxPulsosBuzzer = 10;
 
-"*Parametro*" dedicado a ha establecer el número máximo que se va a apagar y prender el buzer del sistema de alarma
+"*Parametro*" dedicado a ha establecer el número máximo que se va a apagar y prender el buzer del sistema de alarma; ten en cuenta que se cuenta un ciclo al dar un pitido y otro al no darlo osea que por defecto se tienen 5 veces ON + 5 veces OFF = 10 pulsos para 5 pitidos completos.
+
 
     bool buzzerCompletadoCiclo = false;
 
-Booleano que indica si se ha completado el ciclo de sonido del buzzer o no.
+Booleano que indica si se ha completado el ciclo de sonido del buzzer o no, indica si el buzzer ya terminó sus 5 pitidos
 
 #### Variables del sensor de movimiento
 
@@ -217,13 +224,13 @@ Booleano que indica si se ha completado el ciclo de sonido del buzzer o no.
 
 Guarda el tiempo en que se detectó el último movimiento, ha de ser utilizado para saber si ha pasado un tiempo determinado sin movimiento.
 
-    const unsigned long tiempoEsperaSinMovimiento = 5000;
+    const unsigned long tiempoEsperaSinMovimiento = 500; // 0.5 segundos
 
-Tiempo de espera (en milisegundos) para considerar que ya no hay movimiento. En este caso, después de 5 segundos el lcd mostrará el mensaje "Sin movimiento" y el buzzer se apagará.
+Tiempo de espera (en milisegundos) para considerar que ya no hay movimiento. En este caso, después de 0.5 segundos el lcd mostrará el mensaje "Sin movimiento" y el buzzer se apagará.
 
 #### Variables de configuración y armado
 
-    const unsigned long tiempoCalibracionPIR = 30000; // 30 segundos (30000 milisegundos)
+    const unsigned long tiempoCalibracionPIR = 10000; // 10 segundos (10000 milisegundos)
 
 Variable que guarda el tiempo de espera (en milisegundos) para que el sistema cargue y se calibre
 
@@ -231,17 +238,31 @@ Variable que guarda el tiempo de espera (en milisegundos) para que el sistema ca
 
 Guarda el tiempo en que la alarma pasó a estado ALARMA_ACTIVADA (después del armado)
 
-const unsigned long duracionAlarmaAutomatica = 5 * 60 * 1000; // 5 minutos en milisegundos
+    const unsigned long duracionAlarmaAutomatica = 5 * 60 * 1000; // 5 minutos en milisegundos
 
 Guarda el tiempo en el que la alarma estará activa en milisegundos
 
-unsigned long tiempoInicioArmado = 0; 
+unsigned long tiempoInicioArmado = 0;
 
 Guarda el tiempo en que se inició el proceso de armado
 
-const unsigned long duracionRetardoArmado = 5000; // 5 segundos para el retardo de armado
+    const unsigned long duracionRetardoArmado = 5000; // 5 segundos para el retardo de armado
 
 Guarda el tiempo de retardo para el armado de la alarma
+
+#### Variables para la verificación de conexión del PIR al armar
+ 
+    unsigned long tiempoInicioVerificacionPIRArmado = 0;
+
+El timepo/intstante inicial en que se inició la verificación de la conexión del PIR al armar la alarma
+
+    const unsigned long duracionVerificacionPIRArmado = 1000; // 1 segundo
+
+Tiempo a esperar para verificar la conexión del PIR al armar la alarma
+
+    int contadorDisparosAlarma = 0;
+
+Contador para las veces que la alarma se ha disparado.
 
 ##### **Tabla de resumen de variables y constantes**
 
@@ -268,6 +289,39 @@ Guarda el tiempo de retardo para el armado de la alarma
 | `duracionRetardoArmado`           | Retardo entre activación y estado activo       |
 
 ## Bloques e intrucciones del código del programa
+
+### Bool verificarConexionPIR(){}
+
+- Retorna true si el PIR detecta algo (un HIGH) en un corto período, false si no.
+- Con una resistencia pulldown, un pin desconectado o un PIR en reposo (sin movimiento) leerá LOW.
+- Solo si el PIR está conectado Y detecta movimiento, leerá HIGH.
+Esto ayuda a confirmar que el PIR está funcional.
+
+#### Descripción : Verifica si el PIR está conectado y activo
+
+        bool verificarConexionPIR() 
+    {
+        unsigned long tiempoInicio = millis();
+
+*millis()* es una función estándar de Arduino que devuelve el número de milisegundos transcurridos desde que la placa comenzó a ejecutarse (desde que se encendió o se reinició). Empezar medición del tiempo para determinar cuando apagar el sensor.
+
+Mientras el tiempo transcurrido a partir de haberse iniciado la verificación sea menor que el tiempo de duración de la verificación, se ejecuta el siguiente bucle:
+
+        while ((millis() - tiempoInicio) < duracionVerificacionPIRArmado) 
+        {
+            if (digitalRead(pinPIR) == HIGH) 
+            {
+                return true; // PIR detectó algo, está conectado y funcional.
+            }
+            delay(10); // Pequeño delay para no sobrecargar el bucle.
+        }
+
+Durante el bucle se ejecuta *digitalRead(pinPIR) == HIGH* como argumento de un condicional, basicamente se verifica si es que el pin donde está conectado nuestro sensor de movimiento a recibido señal de conexión, si ese es el caso se retornará un valor de "verdadero" si antes agregar un pequeño delay para evitar sobrecargar el bucle.
+
+        return false; // PIR no detectó un HIGH en el tiempo de verificación      (desconectado o no funcional).
+    }
+
+Continuando con la siguiente parte del bucle, si no se detecta "señal" en el sensor de movimiento se procede a devolver un valor booleano de "falso".
 
 ### Void setup(){}
 
@@ -318,10 +372,10 @@ Las intrucciones seguidas de *lcd.* manejan lo que puede mostrar en la pantalla 
 
 Donde:
 
--*.clear*: Borra todo el contenido que puede haber estado en la pantalla LCD.
--*.setCursor(0, 1)*: Posiciona el cursor en la posición en la poscición (0,0), como en la notación del objeto LCD, (0,1) se refiere al número de la fila y la columna del LCD; podemos pensar en él como una especie de *'\r'*.
--*.print("---")*: Muestra un mensaje en el lcd.
--*.delay(2000)*: Espera 2 segundos para mostrar el mensaje de inicio.
+- *.clear*: Borra todo el contenido que puede haber estado en la pantalla LCD.
+- *.setCursor(0, 1)*: Posiciona el cursor en la posición en la poscición (0,0), como en la notación del objeto LCD, (0,1) se refiere al número de la fila y la columna del LCD; podemos pensar en él como una especie de *'\r'*.
+- *.print("---")*: Muestra un mensaje en el lcd.
+- *.delay(2000)*: Espera 2 segundos para mostrar el mensaje de inicio.
 
 Ahora se puede entender: 
 
@@ -346,6 +400,8 @@ Ahora se puede entender:
 
 En el argumento del *for* se transforma el tiempo de calibración asignado en la variable a segundos y se hace que decienda este valor hasta que sea menor o igual a 0. En cada interación del bucle se muestra el tiempo restante en la monitorización del sistema.
 
+Si en algún momento el usuario modifica el tiempo de armado del sistema, el condicional se encarga de mostrar un espacio para no "desplazar" el tiempo que se muestra en pantalla ya que este estará compuesto por un dígito.
+
 **-- Asegurarse de que el buzzer esté APAGADO al final de la inicialización --:**
 
       digitalWrite(pinBuzzer, LOW);
@@ -364,8 +420,9 @@ Forzar actualización inicial del LCD
 
       tiempoUltimoMovimientoReal = millis();
 
-millis() es una función estándar de Arduino que devuelve el número de milisegundos transcurridos desde que la placa comenzó a ejecutarse (desde que se encendió o se reinició). Empezar medición del tiempo para determinar cuando apagar el sensor.
+*millis()* Empieza a medir el tiempo desde que el sistema se ha activado.
 
       movimientoDetectadoAnterior = false; // aun no debe activarse la alarma
       tiempoInicioAlarmaActiva = 0; // Asegurarse de que esté en 0 al inicio
     }
+
