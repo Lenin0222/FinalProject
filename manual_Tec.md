@@ -152,7 +152,8 @@ Son los parámetros de configuración:
       ALARMA_DESACTIVADA, //0
       ALARMA_ARMANDO, // 1
       ALARMA_ACTIVADA, // 2
-      ALARMA_DISPARADA // 3
+      ALARMA_DISPARADA, // 3
+      ERROR_PIR_ARMADO  // 4
     };
     EstadoAlarma estadoActualAlarma = ALARMA_DESACTIVADA; // estado actual de la alarma
 
@@ -162,6 +163,7 @@ Son los parámetros de configuración:
 | `ALARMA_ARMANDO`     | Cuenta regresiva antes de activarse (5 segundos).        |
 | `ALARMA_ACTIVADA`    | Alarma armada, esperando movimiento.                     |
 | `ALARMA_DISPARADA`   | Movimiento detectado. El buzzer suena intermitentemente. |
+| `ERROR_PIR_ARMADO`   | Error, no se pudo armar el PIR.                          |
 
 
 #### Variables de control de la alarma
@@ -297,7 +299,7 @@ Contador para las veces que la alarma se ha disparado.
 - Solo si el PIR está conectado Y detecta movimiento, leerá HIGH.
 Esto ayuda a confirmar que el PIR está funcional.
 
-#### Descripción : Verifica si el PIR está conectado y activo
+#### Descripción detallada : Verificar si el PIR está conectado y activo
 
         bool verificarConexionPIR() 
     {
@@ -334,7 +336,7 @@ Este es bloque principal del programa, el cual se ha de ejecutar una sola vez al
 - Mostrar mensajes de estado en el LCD.
 - Asegurar que el sistema comience en estado seguro (alarma desactivada y buzzer apagado).
 
-#### Descripción de las funciones del bloque setup()
+#### Descripción detallada del bloque setup()
 
     void setup() {
       Serial.begin(9600); 
@@ -404,6 +406,7 @@ Si en algún momento el usuario modifica el tiempo de armado del sistema, el con
 
 **-- Asegurarse de que el buzzer esté APAGADO al final de la inicialización --:**
 
+      noTone(pinBuzzer);  
       digitalWrite(pinBuzzer, LOW);
 
 Al pin donde está conectado el Buzzer, no se le asigna voltaje para evitar que se active
@@ -420,9 +423,118 @@ Forzar actualización inicial del LCD
 
       tiempoUltimoMovimientoReal = millis();
 
-*millis()* Empieza a medir el tiempo desde que el sistema se ha activado.
+*millis()* Registra el momento en que el sistema se ha activado.
 
       movimientoDetectadoAnterior = false; // aun no debe activarse la alarma
       tiempoInicioAlarmaActiva = 0; // Asegurarse de que esté en 0 al inicio
     }
+
+### Void loop(){}
+
+Este método se ejecuta repetidamente mientras el Arduino este encendido y se podría decir que es el grueso del funcionamiento del dispositivo, sus funciones principales son:
+
+- Leer las señales cada vez que se presione un boton para saber si activar o desactivar la alarma.
+- Mide el tiempo de inactividad en el sensor PIR para poder determinar cuando apagar la alarma (BUZZER).
+- Leer las señales que envia el PIR cuando detecta movimiento para activar la arlarma si es que esta se encuentra activa.
+- Hacer que el BUZZER emita pulsos.
+
+#### Descripción detallada del bolque loop()
+
+##### --- 1. Lectura y Debounce del Botón --- 
+
+Esta parte debe ejecutarse en cada interacción para asegurarse que el boton sea siempre responsivo.
+
+    int lecturaBoton = digitalRead(pinBoton);
+
+A la variable lectura de Boton se le asigna el valor que tiene el pin del boton en ese momento, dicho valor es extraido con la función *digitalRead()* cuyo argumento es el número del pin donde se encuentra conectado el boton; *digitalRead()* se encarga de arrojar un valor de 0 o 1 dependiendo de si el pin está en estado *HIGH* o *LOW*, osea, si dicho pin está recibiendo o no señal de voltaje eléctrico al ser presionado o no. Cabe recalcar que cuando el botón se está presionando , el pin del botón se encuentra en estado *LOW* y cuando no se está presionando , el pin del botón se encuentra en estado *HIGH*.
+
+    if (lecturaBoton != valorBotonAnterior)
+    {
+      tiempoUltimoCambioBoton = millis();
+    }
+
+El condicional anterior se encarga se detectar si es que el botón ha cambiado de "estado" (HIGH o LOW) y si es que ha cambiado, se empieza a medir el tiempo con *millis()* desde que lo haya hecho
+
+    if ((millis() - tiempoUltimoCambioBoton) > debounceDelay)
+
+Este es el argumento del condicional principal del bloqur, este se encarga de verificar si el tiempo transcurrido desde que se detectó el cambio de estado del botón es mayor que el tiempo de retraso entre pulsos (debounceDelay), si es que es mayor, entonces se procede con la siguiente parte:
+ 
+    {
+        if (lecturaBoton != valorBotonActual)
+        {
+          valorBotonActual = lecturaBoton;
+
+Nos encontramos con otro condicional encargado de actualizar el estado del botón: si el valor leido del botón es diferente al valor actual, entonces se procede a cambiar el valor actual por la lectura del botón. Es importante recalcar que *valorBotónActual* está incializado sin un valor, por lo que en la primera interacción siempre será diferente del valor leído.
+
+##### --- 2. Manejo de la Alarma ---
+
+Si es que el botón está presionado:
+
+Si la alarma está desactivada o hubo un error por PIR, se intenta armar de nuevo el sistema de alarma o reiniciarlo en su defecto (vuelve a verificar si el sistema esta alarmado) sin antes mostrar los mensajes en el LCD:
+
+          if (valorBotonActual == LOW) // Si el botón está presionado
+            { 
+                if (estadoActualAlarma == ALARMA_DESACTIVADA || estadoActualAlarma  ==   ERROR_PIR_ARMADO)
+                {
+                  Serial.println("Intentando armar alarma. Verificando PIR...");
+                  lcd.clear();
+                  lcd.setCursor(0, 0);
+                  lcd.print("Verificando PIR");
+                  lcd.setCursor(0, 1);
+                  lcd.print("para armar...");
+                  delay(1000); // Delay por 1 segundo
+
+Si es que *verificarConexiónPIR()* devuelve un "true", entonces se procede a activar la alarma además de guardar el tiempo que pasa desde que esta se active:
+
+                  if (verificarConexionPIR()) 
+                    {
+                        estadoActualAlarma = ALARMA_ARMANDO;
+                        tiempoInicioArmado = millis();   
+                        Serial.println("Alarma: Iniciando armado (5s de retardo)");
+                        lcdNecesitaActualizar = true;       // Forzar     actualización
+                        tone(pinBuzzer, 800, 100); // Tono de "Adios"
+                    }
+
+El estado de la alarma ha pasado a "Armandose" y se ha iniciado el temporizador para el retardo de 5 segundos antes de que la alarma se incie, además se fuerza a que el estado de la alarma se actualize para luego emitir un tono de "confirmación" con *tone(pinBuzzer, 800, 100);*.
+
+En:
+
+    tone(pinBuzzer, 800, 100) // Tono (pin, frecuencia, duración)
+
+Se hace que el pin donde esta conectado la alarma (BUZZER) emita un tono de 800 Hz durante 100 ms. Si se requiere cambiar el sonido , se puede cambiar la frecuencia y la duración de este teniendo en cuenta que entre más frecuencia halla más agudo será el sonido.
+
+                    else 
+                    {
+                        estadoActualAlarma = ERROR_PIR_ARMADO;
+                        Serial.println("ERROR: PIR no detectado al intentar armar   la    alarma.    ");
+                        lcdNecesitaActualizar = true;
+                    }
+                }
+
+Si es que *verificarConexiónPIR()* no devuelve un "true", entonces se procede a asignarle a la alarmar el estado de "*ERROR_PIR_ARMADO*", se muestra el error en el LCD y se fuerza a que el estado de la alarma se actualice. El tono de error se lo maneja en un "*switch*" más adelante.
+
+Si es que el botón no está presionado:
+
+                else if (estadoActualAlarma == ALARMA_ACTIVADA ||     estadoActualAlarma  == ALARMA_DISPARADA)
+                {
+                    estadoActualAlarma = ALARMA_DESACTIVADA;
+                    Serial.println("Alarma: DESACTIVADA manualmente.");
+                    lcdNecesitaActualizar = true;             // Forzar actualización
+                    tone(pinBuzzer, 1200, 100); // Tono de "Bienvenido"
+                }
+
+Si es que la alamarma está activada o ha sido disparada, se le asigna el estado de "*ALARMA_DESACTIVADA*" para desactivar la alarma, se fuerza a que el estado de la alarma se actualice, se imprime un mensaje de confirmación en el serial y se emite un tono de "Bienvenido" con (condifgurado a 1200hz por 100 milisegundos).
+
+                noTone(pinBuzzer);
+                digitalWrite(pinBuzzer, LOW);
+                buzzerCompletadoCiclo = false;
+                conteoPulsosBuzzer = 0; 
+            }
+        }
+    }
+    valorBotonAnterior = lecturaBoton;
+
+Se asegura que no llegue ninguna señal al BUZZER para que este no suene y se modifica el valor de la lectura del BUZZER a low. Además se resetean las banderas del buzzer y el contador de pulsos de este. POr último, se guarda el estado actual del botón para futuras interacciones.
+
+##### --- 2. Lógica principal de la alarma basada en estados ---
 

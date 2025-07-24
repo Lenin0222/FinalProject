@@ -145,7 +145,8 @@ void loop() {
     if (lecturaBoton != valorBotonActual) {
       valorBotonActual = lecturaBoton;
 
-      if (valorBotonActual == LOW) { // Botón presionado (LOW para INPUT_PULLUP)
+      if (valorBotonActual == LOW)
+      { // Botón presionado (LOW para INPUT_PULLUP)
         // Lógica de transición de estado al presionar el botón
         if (estadoActualAlarma == ALARMA_DESACTIVADA || estadoActualAlarma == ERROR_PIR_ARMADO) {
           // Si está desactivada O en error por PIR, intenta armar/reiniciar
