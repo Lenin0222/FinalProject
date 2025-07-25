@@ -39,7 +39,7 @@ A continuación se presenta un esquema general del funcionamiento del programa:
     |  LCD "sin mov."     |
     +---------------------+
 
-## Describción del código del programa
+## Descripción del código del programa
 
 ### Librerías utilizadas
 
@@ -58,7 +58,7 @@ Librería estándar de Arduino para el manejo de pines digitales y analógicos, 
 
 #### Wire.h
 
-Librería que permite la comunicación I2C entre el Arduino y dispositivos externos, de tal manera que se puede complementar nuestro circuito con sensores, pantallas LCD, RTC, expansores de pines, etc. Permite utilizar comandos como:
+Librería que permite la comunicación I2C entre el Arduino y dispositivos externos, de tal manera que se puede complementar nuestro circuito con sensores, pantallas LCD, RTC, pines, etc. Permite utilizar comandos como:
 
 - *pinMode(pin, INPUT)* - Configura un pin especificado como entrada digital para leer señales externas.
 - *pinMode(pin, OUTPUT)* - Configura un pin especificado como salida digital para enviar señales.
@@ -130,11 +130,11 @@ Crea un objeto llamado lcd que representa una pantalla LCD con interfaz I2C, est
 
     (0x27, 16, 2)
 
-Tambien se cuenta con un objeto virtual de repuesto en caso de que no funcione el anterior:
+También se cuenta con un objeto virtual de repuesto en caso de que no funcione el anterior:
 
     LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
-Sientete libre de utilizar *.x3F* si el *.x27* no funciona.
+Siéntete libre de utilizar *.x3F* si el *.x27* no funciona.
 
 Son los parámetros de configuración:
 
@@ -164,7 +164,6 @@ Son los parámetros de configuración:
 | `ALARMA_ACTIVADA`    | Alarma armada, esperando movimiento.                     |
 | `ALARMA_DISPARADA`   | Movimiento detectado. El buzzer suena intermitentemente. |
 | `ERROR_PIR_ARMADO`   | Error, no se pudo armar el PIR.                          |
-
 
 #### Variables de control de la alarma
 
@@ -209,12 +208,11 @@ Intervalo en milisegundos entre cada cambio de estado del buzzer (cada 250 ms), 
 
     int conteoPulsosBuzzer = 0; 
 
-Variable de dedicada a contar cuántas veces se ha activado el buzer;
+Variable de dedicada a contar cuántas veces se ha activado el BUZZER;
 
     const int maxPulsosBuzzer = 10;
 
-"*Parametro*" dedicado a ha establecer el número máximo que se va a apagar y prender el buzer del sistema de alarma; ten en cuenta que se cuenta un ciclo al dar un pitido y otro al no darlo osea que por defecto se tienen 5 veces ON + 5 veces OFF = 10 pulsos para 5 pitidos completos.
-
+"*Parametro*" dedicado a ha establecer el número máximo que se va a apagar y prender el BUZZER del sistema de alarma; ten en cuenta que se cuenta un ciclo al dar un pitido y otro al no darlo osea que por defecto se tienen 5 veces ON + 5 veces OFF = 10 pulsos para 5 pitidos completos.
 
     bool buzzerCompletadoCiclo = false;
 
@@ -253,10 +251,10 @@ Guarda el tiempo en que se inició el proceso de armado
 Guarda el tiempo de retardo para el armado de la alarma
 
 #### Variables para la verificación de conexión del PIR al armar
- 
+
     unsigned long tiempoInicioVerificacionPIRArmado = 0;
 
-El timepo/intstante inicial en que se inició la verificación de la conexión del PIR al armar la alarma
+El instante inicial en que se inició la verificación de la conexión del PIR al armar la alarma
 
     const unsigned long duracionVerificacionPIRArmado = 1000; // 1 segundo
 
@@ -362,7 +360,6 @@ Inicializa el LCD y enciende la luz de fondo del LCD (enciende la pantalla del l
 
 **--- Secuencia de Inicio y Calibración del PIR ---:**
 
-
 Las intrucciones seguidas de *lcd.* manejan lo que puede mostrar en la pantalla del lcd, puedes pensar en estas como las instrucciones que se le dan a la terminal de una workspace en visual code. En este caso, para mostrar el mensaje de inicio del sistema se ha procedido de la siguiente manera
 
       lcd.clear();
@@ -379,7 +376,7 @@ Donde:
 - *.print("---")*: Muestra un mensaje en el lcd.
 - *.delay(2000)*: Espera 2 segundos para mostrar el mensaje de inicio.
 
-Ahora se puede entender: 
+Ahora se puede entender:
 
       lcd.clear();
       lcd.setCursor(0, 0);
@@ -400,7 +397,7 @@ Ahora se puede entender:
     }
     Serial.println("PIR Calibrado. Sistema LISTO.");
 
-En el argumento del *for* se transforma el tiempo de calibración asignado en la variable a segundos y se hace que decienda este valor hasta que sea menor o igual a 0. En cada interación del bucle se muestra el tiempo restante en la monitorización del sistema.
+En el argumento del *for* se transforma el tiempo de calibración asignado en la variable a segundos y se hace que decienda este valor hasta que sea menor o igual a 0. En cada iteración del bucle se muestra el tiempo restante en la monitorización del sistema.
 
 Si en algún momento el usuario modifica el tiempo de armado del sistema, el condicional se encarga de mostrar un espacio para no "desplazar" el tiempo que se muestra en pantalla ya que este estará compuesto por un dígito.
 
@@ -415,7 +412,7 @@ Al pin donde está conectado el Buzzer, no se le asigna voltaje para evitar que 
       conteoPulsosBuzzer = 0;
       estadoActualAlarma = ALARMA_DESACTIVADA;
 
-En dado caso de que las variables no se hayan incializado con sus valores por defecto (configuarados para que la alarma no suene), nos aseguramos de que sigan teniendo esos valores
+En dado caso de que las variables no se hayan inicializado con sus valores por defecto (configurados para que la alarma no suene), nos aseguramos de que sigan teniendo esos valores
 
       lcdNecesitaActualizar = true; 
 
@@ -433,20 +430,20 @@ Forzar actualización inicial del LCD
 
 Este método se ejecuta repetidamente mientras el Arduino este encendido y se podría decir que es el grueso del funcionamiento del dispositivo, sus funciones principales son:
 
-- Leer las señales cada vez que se presione un boton para saber si activar o desactivar la alarma.
+- Leer las señales cada vez que se presione un Boton para saber si activar o desactivar la alarma.
 - Mide el tiempo de inactividad en el sensor PIR para poder determinar cuando apagar la alarma (BUZZER).
-- Leer las señales que envia el PIR cuando detecta movimiento para activar la arlarma si es que esta se encuentra activa.
+- Leer las señales que envía el PIR cuando detecta movimiento para activar la alarma si es que esta se encuentra activa.
 - Hacer que el BUZZER emita pulsos.
 
 #### Descripción detallada del bolque loop()
 
-##### --- 1. Lectura y Debounce del Botón --- 
+##### --- 1. Lectura y Debounce del Botón ---
 
-Esta parte debe ejecutarse en cada interacción para asegurarse que el boton sea siempre responsivo.
+Esta parte debe ejecutarse en cada interacción para asegurarse que el botón sea siempre responsivo.
 
     int lecturaBoton = digitalRead(pinBoton);
 
-A la variable lectura de Boton se le asigna el valor que tiene el pin del boton en ese momento, dicho valor es extraido con la función *digitalRead()* cuyo argumento es el número del pin donde se encuentra conectado el boton; *digitalRead()* se encarga de arrojar un valor de 0 o 1 dependiendo de si el pin está en estado *HIGH* o *LOW*, osea, si dicho pin está recibiendo o no señal de voltaje eléctrico al ser presionado o no. Cabe recalcar que cuando el botón se está presionando , el pin del botón se encuentra en estado *LOW* y cuando no se está presionando , el pin del botón se encuentra en estado *HIGH*.
+A la variable lectura de Boton se le asigna el valor que tiene el pin del botón en ese momento, dicho valor es extraído con la función *digitalRead()* cuyo argumento es el número del pin donde se encuentra conectado el botón; *digitalRead()* se encarga de arrojar un valor de 0 o 1 dependiendo de si el pin está en estado *HIGH* o *LOW*, osea, si dicho pin está recibiendo o no señal de voltaje eléctrico al ser presionado o no. Cabe recalcar que cuando el botón se está presionando , el pin del botón se encuentra en estado *LOW* y cuando no se está presionando , el pin del botón se encuentra en estado *HIGH*.
 
     if (lecturaBoton != valorBotonAnterior)
     {
@@ -457,14 +454,14 @@ El condicional anterior se encarga se detectar si es que el botón ha cambiado d
 
     if ((millis() - tiempoUltimoCambioBoton) > debounceDelay)
 
-Este es el argumento del condicional principal del bloqur, este se encarga de verificar si el tiempo transcurrido desde que se detectó el cambio de estado del botón es mayor que el tiempo de retraso entre pulsos (debounceDelay), si es que es mayor, entonces se procede con la siguiente parte:
- 
+Este es el argumento del condicional principal del bloque, este se encarga de verificar si el tiempo transcurrido desde que se detectó el cambio de estado del botón es mayor que el tiempo de retraso entre pulsos (debounceDelay), si es que es mayor, entonces se procede con la siguiente parte:
+
     {
         if (lecturaBoton != valorBotonActual)
         {
           valorBotonActual = lecturaBoton;
 
-Nos encontramos con otro condicional encargado de actualizar el estado del botón: si el valor leido del botón es diferente al valor actual, entonces se procede a cambiar el valor actual por la lectura del botón. Es importante recalcar que *valorBotónActual* está incializado sin un valor, por lo que en la primera interacción siempre será diferente del valor leído.
+Nos encontramos con otro condicional encargado de actualizar el estado del botón: si el valor leído del botón es diferente al valor actual, entonces se procede a cambiar el valor actual por la lectura del botón. Es importante recalcar que *valorBotónActual* está inicializado sin un valor, por lo que en la primera interacción siempre será diferente del valor leído.
 
 ##### --- 2. Manejo de la Alarma ---
 
@@ -495,7 +492,7 @@ Si es que *verificarConexiónPIR()* devuelve un "true", entonces se procede a ac
                         tone(pinBuzzer, 800, 100); // Tono de "Adios"
                     }
 
-El estado de la alarma ha pasado a "Armandose" y se ha iniciado el temporizador para el retardo de 5 segundos antes de que la alarma se incie, además se fuerza a que el estado de la alarma se actualize para luego emitir un tono de "confirmación" con *tone(pinBuzzer, 800, 100);*.
+El estado de la alarma ha pasado a "Armándose" y se ha iniciado el temporizador para el retardo de 5 segundos antes de que la alarma se incie, además se fuerza a que el estado de la alarma se actualize para luego emitir un tono de "confirmación" con *tone(pinBuzzer, 800, 100);*.
 
 En:
 
@@ -523,7 +520,7 @@ Si es que el botón no está presionado:
                     tone(pinBuzzer, 1200, 100); // Tono de "Bienvenido"
                 }
 
-Si es que la alamarma está activada o ha sido disparada, se le asigna el estado de "*ALARMA_DESACTIVADA*" para desactivar la alarma, se fuerza a que el estado de la alarma se actualice, se imprime un mensaje de confirmación en el serial y se emite un tono de "Bienvenido" con (condifgurado a 1200hz por 100 milisegundos).
+Si es que la alarma está activada o ha sido disparada, se le asigna el estado de "*ALARMA_DESACTIVADA*" para desactivar la alarma, se fuerza a que el estado de la alarma se actualice, se imprime un mensaje de confirmación en el serial y se emite un tono de "Bienvenido" con (configurado a 1200hz por 100 milisegundos).
 
                 noTone(pinBuzzer);
                 digitalWrite(pinBuzzer, LOW);
@@ -534,7 +531,6 @@ Si es que la alamarma está activada o ha sido disparada, se le asigna el estado
     }
     valorBotonAnterior = lecturaBoton;
 
-Se asegura que no llegue ninguna señal al BUZZER para que este no suene y se modifica el valor de la lectura del BUZZER a low. Además se resetean las banderas del buzzer y el contador de pulsos de este. POr último, se guarda el estado actual del botón para futuras interacciones.
+Se asegura que no llegue ninguna señal al BUZZER para que este no suene y se modifica el valor de la lectura del BUZZER a low. Además se reinician las banderas del buzzer y el contador de pulsos de este. POr último, se guarda el estado actual del botón para futuras interacciones.
 
 ##### --- 2. Lógica principal de la alarma basada en estados ---
-
