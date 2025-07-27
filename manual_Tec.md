@@ -1,11 +1,12 @@
 # Manual Técnico: Sistema de Alarma casero
 
-- Integrantes:
-- Lenin
-- Anderson Oña
-- Maylis Oña
-- Sebastián Nogales
-- David
+**Integrantes**:
+
+- Muñoz Santillán, Angelo David
+- Murillo Gálvez
+- Nogales Zapata, Sebastián Alejandro
+- Oña Maigua, Maylis Emilie
+- Oña Pinenla, Anderson Francisco
 
 ## Funcionamiento General del programa
 

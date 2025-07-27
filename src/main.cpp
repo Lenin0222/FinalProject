@@ -119,7 +119,7 @@ void setup() {
   Serial.println("PIR Calibrado. Sistema LISTO.");
   // --- FIN Secuencia de Calibración ---
 
-  // Asegurarse de que el buzzer esté APAGADO al final de la inicialización
+  // Asegurarse de que el buzzer esté APAGADO al final de la Inicialización
   noTone(pinBuzzer);
   digitalWrite(pinBuzzer, LOW);
   buzzerCompletadoCiclo = false;
@@ -316,7 +316,7 @@ void loop() {
 
       // Buzzer intermitente para el error (no bloqueante)
       if ((millis() - tiempoUltimaAlternacionBuzzer) >= 500) { // Tono de error cada 0.5s
-        if (digitalRead(pinBuzzer) == LOW) { // Si el buzzer está apagado, enciéndelo
+        if (digitalRead(pinBuzzer) == LOW) { // Si el buzzer está apagado, enciéndalo
           tone(pinBuzzer, 800);
         } else { // Si está encendido, apágalo
           noTone(pinBuzzer);
