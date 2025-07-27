@@ -1,3 +1,8 @@
+# Manual Técnico: Sistema de Alarma casero
+
+- Integrantes:
+- 
+
 ## Funcionamiento General del programa
 
 El programa cumple con los siguientes procesos:
@@ -533,4 +538,214 @@ Si es que la alarma está activada o ha sido disparada, se le asigna el estado d
 
 Se asegura que no llegue ninguna señal al BUZZER para que este no suene y se modifica el valor de la lectura del BUZZER a low. Además se reinician las banderas del buzzer y el contador de pulsos de este. POr último, se guarda el estado actual del botón para futuras interacciones.
 
-##### --- 2. Lógica principal de la alarma basada en estados ---
+##### --- 2. Lógica principal de la alarma basada en estados ---:
+
+Se determinan los comportamientos que puede tener la alarma basados en los estados que puede tener mediante un *switch*:
+
+###### Primer caso, *ALARMA_DESACTIVADA*:
+
+        switch (estadoActualAlarma)
+        {
+            case ALARMA_DESACTIVADA:
+              if (lcdNecesitaActualizar) 
+            {
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("!! DESACTIVADA !!");
+                lcd.setCursor(0, 1);
+                lcd.print(" Disparos: ");
+                lcd.print(contadorDisparosAlarma); // Muestra el contador
+                lcdNecesitaActualizar = false;
+                movimientoDetectadoAnterior = false; // Restablecer estado de movimiento
+            }
+              break;
+
+- Si la alarma está en el estado de "*ALARMA_DESACTIVADA*", se limpia la pantalla del LCD y se muestra el mensaje de que la alarma está desactivada, para después mostrar el número de veces que la alarma ha sido activada dese que se ha iniciado el sistema.
+- Nos aseguramos que la alarma no se actualice nuevamente y se le asigna el valor de falso a la variable encargada de registrar el movimiento por parte del PIR en alguna instancia pasada.
+
+
+###### Segundo caso, *ALARMA_ARMANDO*:
+
+            case ALARMA_ARMANDO:
+              if ((millis() - tiempoInicioArmado) < duracionRetardoArmado) 
+              {
+                int segundosRestantes = (duracionRetardoArmado - (millis() - tiempoInicioArmado)) / 1000 + 1;
+                if (lcdNecesitaActualizar) {
+                  lcd.clear();
+                  lcd.setCursor(0, 0);
+                  lcd.print("!ARMANDO ALARMA!");
+                }
+                lcd.setCursor(0, 1);
+                lcd.print("   Lista en ");
+                if (segundosRestantes < 10) lcd.print(" ");
+                lcd.print(segundosRestantes);
+                lcd.print("s ");
+                lcdNecesitaActualizar = false;
+
+              } else {
+                estadoActualAlarma = ALARMA_ACTIVADA; // El retardo ha terminado, alarma activa
+                tiempoInicioAlarmaActiva = millis(); // Registrar el tiempo de activación real
+                lcdNecesitaActualizar = true;         // Forzar actualización
+                Serial.println("Alarma: ACTIVADA (retardo finalizado).");
+              }
+              break;
+
+**Armándose:**
+
+- Se calcula el duración establecida; se le resta el tiempo transcurrido desde su inicio y se lo divide por 1000 para obtener el tiempo en segundos ya que solo se registran los tiempos en milisegundos.
+- Se limpia la pantalla del LCD y se muestra el mensaje de que la alarma está en el proceso de armado, para después mostrar el tiempo que falta para que la alarma quede lista para sonar. Cuando faltan menos de 10 segundos para que se arme el sistema , se muestra un espacio en blanco para que el mensaje quede centrado ya que solo se mostrara un dígito.
+- También nos aseguramos de que la alarma no se actualice, por lo que se le asigna el valor de falso a la variable "*lcdNecesitaActualizar*".
+
+**Armada**
+
+- Si es que el tiempo de retardo ha terminado, se le asigna el valor de "*ALARMA_ACTIVADA*" y se registra el instante en el que ha sido activada con *millis()*.
+- Se fuerza su actualización, pues se necesitará verificar que la alarma esté conectada y lista, y se imprime un mensaje en el puerto serie indicando que la alarma ha quedado activada.
+
+###### Tercer caso, *ALARMA_ACTIVADA*:
+
+            case ALARMA_ACTIVADA:
+              if ((millis() - tiempoInicioAlarmaActiva) >= duracionAlarmaAutomatica) 
+              {
+                estadoActualAlarma = ALARMA_DESACTIVADA;
+                lcdNecesitaActualizar = true;
+                Serial.println("Alarma: DESACTIVADA AUTOMATICAMENTE (5 minutos transcurridos).");
+                break;
+              }
+
+**Condicional:**  Si el tiempo transcurrido desde que se activó la alarma (*millis() - tiempoInicioAlarmaActiva*) es mayor o igual a la duración de la alarma:
+
+- Se le asigna el valor de "*ALARMA_DESACTIVADA*" a la variable "*
+- Se fuerza la actualización del LCD, ya que se ha desactivado la alarma.
+- Se muestra en el serial que la alarma ha quedado desactivada.
+
+              movimientoDetectadoActual = (digitalRead(pinPIR) == HIGH);
+              if (movimientoDetectadoActual) {
+                estadoActualAlarma = ALARMA_DISPARADA;
+                lcdNecesitaActualizar = true;
+                Serial.println("Alarma: MOVIMIENTO DETECTADO. ALARMA DISPARADA.");
+                tiempoUltimoMovimientoReal = millis();
+                contadorDisparosAlarma++;
+              } else 
+              {
+                if (lcdNecesitaActualizar || (movimientoDetectadoAnterior && !movimientoDetectadoActual) ) 
+                {
+                  lcd.clear();
+                  lcd.setCursor(0, 0);
+                  lcd.print("Alarma ACTIVADA ");
+                  lcd.setCursor(0, 1);
+                  lcd.print("Sin movimiento");
+                  lcdNecesitaActualizar = false;
+                }
+              }
+                movimientoDetectadoAnterior = movimientoDetectadoActual;
+                break;
+
+**Condicional II :**
+
+- Si se detecta movimiento (si se detecta un High en el pin PIR), se le asigna el valor de "*ALARMA_DISPARADA*" y se fuerza la actualización del LCD.
+- Se muestra en el serial que la alarma ha quedado disparada, se toma el tiempo de cuando esta ha sido activada y se incrementa el contador de disparos de la alarma.
+
+*Si no se detecta movimiento*, se comprueba si se necesita actualizar el LCD o si se ha detectado movimiento anteriormente pero no se detecta en este momento. Si es así, se limpia la pantalla del LCD y se muestra el mensaje de que la alarma está activada y sin movimiento pero nos asegurarnos de no actualizar el LCD.
+
+###### Cuarto caso, *ALARMA_DISPARADA*:
+
+            case ALARMA_DISPARADA:
+              movimientoDetectadoActual = (digitalRead(pinPIR) == HIGH);
+
+              if (lcdNecesitaActualizar) 
+              {
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("!! MOVIMIENTO !!");
+                lcd.setCursor(0, 1);
+                lcd.print("ALARMA SONANDO!");
+                lcdNecesitaActualizar = false;
+                conteoPulsosBuzzer = 0;
+                buzzerCompletadoCiclo = false;
+                tiempoUltimaAlternacionBuzzer = millis();
+              }
+
+- Si nuestro lcd necesita ser actualizado, se limpia la pantalla y se muestra el mensaje de que se ha detectado movimiento y la alarma está sonando. Luego nos aseguramos de no actualizarlo una vez más.
+- Después, el conteo de los pulsos del BUZZER se reinicia junto con el flag que indica si el BUZZER ha completado un ciclo de sonido, también se tilda el tiempo de la ultima alternación del BUZZER con *millis()*.
+
+              if (!buzzerCompletadoCiclo) {
+                if ((millis() - tiempoUltimaAlternacionBuzzer) >= duracionPulsoBuzzer) {
+                  if (conteoPulsosBuzzer < maxPulsosBuzzer) {
+                    if (conteoPulsosBuzzer % 2 == 0) {
+                      tone(pinBuzzer, 1200);
+                    } else {
+                      noTone(pinBuzzer);
+                    }
+                    conteoPulsosBuzzer++;
+                    tiempoUltimaAlternacionBuzzer = millis();
+                  } else {
+                    noTone(pinBuzzer);
+                    buzzerCompletadoCiclo = true;
+                  }
+                }
+              }
+
+**Condicional :** 
+
+- Si es que el BUZZER no ha completado un ciclo de sonido, se comprueba si ha pasado el tiempo de duración de un pulso  del BUZZER. Si es así, se comprueba si el conteo de pulsos del BUZZER es menor a la cantidad máxima de pulsos permitidos y si es así se hace emitir un tono o no tono al BUZZER dependiendo de si el conteo de pulsos es par o impar (por eso solo suena en la mitad de pulsos establecidos), de lo contrario la alarma no sonará.
+- En esta parte, el usuario puede modificar los parámetros de *tone()* y *noTone()* para cambiar el tono del BUZZER y la frecuencia del sonido como se ha señalado antes.
+- Se incrementa el conteo de pulsos del BUZZER y se actualiza el tiempo de la ultima alternación del BUZZER, si es que el tiempo que pasó desde el último pulso es menor a la duración de un pulso del BUZZER, se dice que el BUZZER ha completado un ciclo de sonido y no se hace sonar el BUZZER.
+
+              if (!movimientoDetectadoActual && (millis() - tiempoUltimoMovimientoReal) > tiempoEsperaSinMovimiento) 
+              {
+                    estadoActualAlarma = ALARMA_ACTIVADA;
+                    lcdNecesitaActualizar = true;
+                    noTone(pinBuzzer);
+                    digitalWrite(pinBuzzer, LOW);
+                    conteoPulsosBuzzer = 0;
+                    buzzerCompletadoCiclo = false;
+                    Serial.println("Alarma: Movimiento cesó, volviendo a estado ACTIVADA.");
+              }
+              movimientoDetectadoAnterior = movimientoDetectadoActual;
+              break;
+
+**Condicional II :**
+
+- Si no se ha detectado movimiento en el tiempo de espera sin movimiento y la alarma lleva activada más tiempo que el tiempo de espera activada, se activa la alarma sin hacer sonar el BUZZER.
+- Nos aseguramos de que el BUZZER no se active, el conteo de pulsos del BUZZER se reinicia y el flag que indica si el BUZZER ha completado un ciclo de sonido es establecido en '*false*'.
+- Finalmente, el al flag que indica movimiento detectado anterior es igualado al flag que indica movimiento detectado actual.
+
+###### Quinto caso, *ERROR_PIR_ARMADO*
+
+Cuando estamos en este estado, mostramos el error y hacemos sonar el buzzer intermitentemente (tono de error) pero permitimos que el loop continúe para que el botón pueda ser leído y la alarma desactivada.
+
+            case ERROR_PIR_ARMADO:
+              if (lcdNecesitaActualizar) 
+              {
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("ERROR: PIR NO ARMADO");
+                lcd.setCursor(0, 1);
+                lcd.print("DETECTADO AL ARMAR");
+                lcdNecesitaActualizar = false;
+              }
+
+Si es que tiempo entre es último pulso del BUZZER (*tiempoUltimaAlternacionBuzzer*) supera el medio segundo, hacemos sonar el BUZZER con un tono de error si este estaba previamente apagado y si estaba encendido lo apagamos, posteriormente volvemos a tomar tiempo de último pulso del BUZZER.
+
+              if ((millis() - tiempoUltimaAlternacionBuzzer) >= 500) 
+              { 
+                if (digitalRead(pinBuzzer) == LOW) {
+                  tone(pinBuzzer, 800);
+                } else { // Si está encendido, apágalo
+                  noTone(pinBuzzer);
+                }
+                tiempoUltimaAlternacionBuzzer = millis();
+              }
+              break;
+          }
+
+Si la alarma se desactiva manualmente o automáticamente, hay que asegurarnos que el buzzer esté apagado, esto también cubre la salida del estado ERROR_PIR_ARMADO si se presiona el botón.
+
+          if (estadoActualAlarma == ALARMA_DESACTIVADA) {
+              noTone(pinBuzzer);
+              digitalWrite(pinBuzzer, LOW);
+              buzzerCompletadoCiclo = false;
+              conteoPulsosBuzzer = 0;
+        }
+    }
+
