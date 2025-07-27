@@ -3,7 +3,7 @@
 **Integrantes**:
 
 - Muñoz Santillán, Angelo David
-- Murillo Gálvez
+- Murillo Gálvez, Lenin Jahir
 - Nogales Zapata, Sebastián Alejandro
 - Oña Maigua, Maylis Emilie
 - Oña Pinenla, Anderson Francisco
