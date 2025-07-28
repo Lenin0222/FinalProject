@@ -2,11 +2,11 @@
 
 **Integrantes**:
 
-- Muñoz Santillán, Angelo David
-- Murillo Gálvez, Lenin Jahir
-- Nogales Zapata, Sebastián Alejandro
-- Oña Maigua, Maylis Emilie
-- Oña Pinenla, Anderson Francisco
+- Muñoz Santillán Angelo David
+- Murillo Gálvez Lenin Jahir
+- Nogales Zapata Sebastián Alejandro
+- Oña Maigua Maylis Emilie
+- Oña Pinenla Anderson Francisco
 
 ## Funcionamiento General del programa
 
